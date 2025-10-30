@@ -1,0 +1,107 @@
+name: ML CI/CD Pipeline
+
+# Trigger the pipeline on push to main branch or pull requests
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:  # Allows manual triggering
+
+jobs:
+  # Job 1: Run unit tests
+  test:
+    runs-on: ubuntu-latest
+    name: Run Unit Tests
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Run unit tests with pytest
+      run: |
+        pytest tests/ -v --tb=short
+    
+    - name: Generate test report
+      if: always()
+      run: |
+        pytest tests/ --tb=short > test-report.txt 2>&1 || true
+    
+    - name: Upload test report
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: test-report
+        path: test-report.txt
+
+  # Job 2: Train model and save as artifact (depends on tests passing)
+  train:
+    runs-on: ubuntu-latest
+    name: Train and Deploy Model
+    needs: test  # Only run if tests pass
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Train model
+      run: |
+        python train_model.py
+    
+    - name: Verify model was created
+      run: |
+        if [ -f "model.pkl" ]; then
+          echo "✓ Model file created successfully"
+          ls -lh model.pkl
+        else
+          echo "✗ Model file not found"
+          exit 1
+        fi
+    
+    - name: Upload trained model as artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: trained-model
+        path: model.pkl
+        retention-days: 30
+    
+    - name: Create deployment summary
+      run: |
+        echo "# ML Pipeline Deployment Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## ✅ Pipeline Status: SUCCESS" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "- **Date**: $(date)" >> $GITHUB_STEP_SUMMARY
+        echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Branch**: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## 📦 Artifacts" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "- Trained model saved as artifact: \`trained-model\`" >> $GITHUB_STEP_SUMMARY
+        echo "- Model file: \`model.pkl\`" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## 📊 Model Details" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "- Algorithm: Random Forest Classifier" >> $GITHUB_STEP_SUMMARY
+        echo "- Dataset: Synthetic 3-class classification (150 samples)" >> $GITHUB_STEP_SUMMARY
+        echo "- Training/Test Split: 80/20" >> $GITHUB_STEP_SUMMARY
