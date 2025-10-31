@@ -5,7 +5,7 @@ import joblib
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, classification_report
-from data_processing import load_data, preprocess_data, get_data_statistics
+from src.data_processing import load_data, preprocess_data, get_data_statistics
 
 
 def train_model(X_train, y_train, n_estimators=100, random_state=42):
