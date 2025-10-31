@@ -3,7 +3,11 @@ Unit tests for data processing module
 """
 import pytest
 import numpy as np
-from data_processing import (
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
+from src.data_processing import (
     load_data, 
     validate_data, 
     preprocess_data, 
